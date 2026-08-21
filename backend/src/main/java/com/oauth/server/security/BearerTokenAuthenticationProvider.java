@@ -8,10 +8,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Authentication provider that validates bearer tokens against the database.
@@ -49,9 +51,14 @@ public class BearerTokenAuthenticationProvider implements AuthenticationProvider
             return null;
         }
 
-        // Token is valid - return authenticated token with username as principal
+        // Token is valid - return authenticated token with username and role
         User user = userToken.getUser();
-        return new BearerTokenAuthenticationToken(token, user.getUsername());
+        String role = user.getRole() != null ? user.getRole() : "USER";
+        return new BearerTokenAuthenticationToken(
+                token,
+                user.getUsername(),
+                List.of(new SimpleGrantedAuthority("ROLE_" + role))
+        );
     }
 
     @Override

@@ -53,6 +53,7 @@ public class AuthController {
                 .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
+                .role(user.getRole())
                 .build();
 
         return ResponseEntity.ok(userInfo);
@@ -102,6 +103,7 @@ public class AuthController {
                         .id(user.getId())
                         .username(user.getUsername())
                         .email(user.getEmail())
+                        .role(user.getRole())
                         .build())
                 .build();
 
@@ -124,6 +126,7 @@ public class AuthController {
                 .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
+                .role(user.getRole())
                 .build();
 
         return ResponseEntity.ok(userInfo);

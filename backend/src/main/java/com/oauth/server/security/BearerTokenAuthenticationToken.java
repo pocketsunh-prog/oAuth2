@@ -1,7 +1,9 @@
 package com.oauth.server.security;
 
 import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 
+import java.util.Collection;
 import java.util.Collections;
 
 /**
@@ -21,10 +23,11 @@ public class BearerTokenAuthenticationToken extends AbstractAuthenticationToken 
     }
 
     /**
-     * Create an authenticated bearer token with principal.
+     * Create an authenticated bearer token with principal and authorities.
      */
-    public BearerTokenAuthenticationToken(String token, Object principal) {
-        super(Collections.emptyList());
+    public BearerTokenAuthenticationToken(String token, Object principal,
+                                          Collection<? extends GrantedAuthority> authorities) {
+        super(authorities);
         this.token = token;
         super.setAuthenticated(true);
         // Store principal in details

@@ -77,6 +77,8 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('user');
   }, []);
 
+  const isAdmin = user?.role === 'ADMIN';
+
   const value = {
     user,
     accessToken,
@@ -85,6 +87,7 @@ export function AuthProvider({ children }) {
     register,
     logout,
     isAuthenticated: !!accessToken,
+    isAdmin,
   };
 
   return (

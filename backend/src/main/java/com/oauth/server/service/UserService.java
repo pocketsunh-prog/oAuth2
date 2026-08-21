@@ -9,6 +9,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 /**
  * Service for managing users (registration, lookup, profile updates).
  */
@@ -70,5 +72,49 @@ public class UserService {
     @Transactional(readOnly = true)
     public User findById(Long id) {
         return userRepository.findById(id).orElse(null);
+    }
+
+    /**
+     * Register a new user with a specific role.
+     *
+     * @param request registration details
+     * @param role    the role to assign (e.g., "USER" or "ADMIN")
+     * @return the created user
+     * @throws IllegalArgumentException if username or email is already taken
+     */
+    @Transactional
+    public User registerUser(RegisterRequest request, String role) {
+        // Check for duplicate username
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new IllegalArgumentException("Username already taken: " + request.getUsername());
+        }
+
+        // Check for duplicate email
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException("Email already registered: " + request.getEmail());
+        }
+
+        // Create the user with encoded password and specified role
+        User user = User.builder()
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .enabled(true)
+                .role(role != null ? role : "USER")
+                .build();
+
+        User savedUser = userRepository.save(user);
+        log.info("Registered new user: {} with role: {}", savedUser.getUsername(), savedUser.getRole());
+        return savedUser;
+    }
+
+    /**
+     * List all users in the system.
+     *
+     * @return list of all users
+     */
+    @Transactional(readOnly = true)
+    public List<User> findAllUsers() {
+        return userRepository.findAll();
     }
 }

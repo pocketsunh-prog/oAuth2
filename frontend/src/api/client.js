@@ -111,4 +111,57 @@ export const tokenApi = {
     apiRequest('/tokens', { method: 'DELETE' }, token),
 };
 
+/**
+ * Admin API methods.
+ */
+export const adminApi = {
+  /**
+   * Create a new user (admin only).
+   * @param {string} token - bearer token
+   * @param {object} userData - { username, email, password, role }
+   * @returns {Promise<object>} created user info
+   */
+  createUser: (token, { username, email, password, role }) =>
+    apiRequest('/admin/users', {
+      method: 'POST',
+      body: JSON.stringify({ username, email, password, role }),
+    }, token),
+
+  /**
+   * List all users (admin only).
+   * @param {string} token - bearer token
+   * @returns {Promise<Array>} list of user info objects
+   */
+  listUsers: (token) =>
+    apiRequest('/admin/users', {}, token),
+
+  /**
+   * Create a new service token (admin only).
+   * @param {string} token - bearer token
+   * @param {object} tokenData - { name, scopes, expiresInDays }
+   * @returns {Promise<object>} service token info (with full token value)
+   */
+  createServiceToken: (token, { name, scopes, expiresInDays }) =>
+    apiRequest('/admin/service-tokens', {
+      method: 'POST',
+      body: JSON.stringify({ name, scopes, expiresInDays }),
+    }, token),
+
+  /**
+   * List all service tokens (admin only).
+   * @param {string} token - bearer token
+   * @returns {Promise<Array>} list of service token info objects
+   */
+  listServiceTokens: (token) =>
+    apiRequest('/admin/service-tokens', {}, token),
+
+  /**
+   * Revoke a service token (admin only).
+   * @param {string} token - bearer token
+   * @param {number} id - ID of the service token to revoke
+   */
+  revokeServiceToken: (token, id) =>
+    apiRequest(`/admin/service-tokens/${id}`, { method: 'DELETE' }, token),
+};
+
 export default apiRequest;

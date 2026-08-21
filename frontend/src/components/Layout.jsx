@@ -6,13 +6,18 @@ import { useAuth } from '../context/AuthContext';
  * Wraps protected pages.
  */
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const location = useLocation();
 
   // Navigation items
   const navItems = [
     { path: '/tokens', label: 'Token Manager', icon: '🔑' },
   ];
+
+  // Add admin dashboard link for admin users
+  if (isAdmin) {
+    navItems.push({ path: '/admin', label: 'Admin Dashboard', icon: '🛡️' });
+  }
 
   return (
     <div className="min-h-screen flex">

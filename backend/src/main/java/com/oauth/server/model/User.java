@@ -34,6 +34,10 @@ public class User {
     @Column(nullable = false)
     private boolean enabled;
 
+    @Builder.Default
+    @Column(name = "role", nullable = false, length = 20)
+    private String role = "USER";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
