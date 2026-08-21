@@ -56,15 +56,65 @@ OAuth/
 ### Prerequisites
 - Java 21+ (required by Spring Boot 4.x)
 - Maven 3.8+
+- H2 (in-memory, default) or MySQL 8.x (optional)
 
 ### Run
+
+**Default (H2 in-memory database):**
 
 ```bash
 cd backend
 mvn spring-boot:run
 ```
 
+**With MySQL:**
+
+```bash
+cd backend
+mvn spring-boot:run -Dspring-boot.run.profiles=mysql
+```
+
 The backend starts on `http://localhost:8080`.
+
+### Database Configuration
+
+| Profile | Database | Details |
+|---------|----------|---------|
+| Default | H2 (in-memory) | Auto-creates schema, seeds demo data, no setup needed |
+| `mysql` | MySQL 8.x | Requires running MySQL server, see config below |
+
+**MySQL Setup:**
+
+**Option A: Docker MySQL (recommended)**
+
+```bash
+# Start MySQL container
+docker-compose up -d
+
+# Stop MySQL container
+docker-compose down
+
+# Stop and remove data volume
+docker-compose down -v
+```
+
+**Option B: Local MySQL**
+
+1. Create the database:
+   ```sql
+   CREATE DATABASE oauth2db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+
+2. Update credentials in `application.yml` under the `mysql` profile if needed.
+
+**Run backend with MySQL:**
+
+```bash
+cd backend
+mvn spring-boot:run -Dspring-boot.run.profiles=mysql
+```
+
+> **Note:** When using MySQL, `sql.init.mode: never` prevents seed data conflicts. For initial setup, either manually insert users or temporarily set `mode: always` on first run.
 
 ### API Endpoints
 
