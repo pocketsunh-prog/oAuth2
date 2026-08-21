@@ -77,6 +77,16 @@ The backend starts on `http://localhost:8080`.
 | DELETE | `/api/tokens/{id}` | Revoke a token |
 | DELETE | `/api/tokens` | Revoke all tokens |
 
+### Admin API Endpoints (require ADMIN role)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/admin/users` | Create a new user |
+| GET  | `/api/admin/users` | List all users |
+| POST | `/api/admin/service-tokens` | Create a service token |
+| GET  | `/api/admin/service-tokens` | List all service tokens |
+| DELETE | `/api/admin/service-tokens/{id}` | Revoke a service token |
+
 ### OAuth2 Endpoints
 
 | Endpoint | Description |
@@ -93,9 +103,10 @@ The backend starts on `http://localhost:8080`.
 
 ### Demo Credentials
 
-**User (seeded in data.sql):**
+**Admin User (seeded in data.sql):**
 - Username: `admin`
 - Password: `admin123`
+- Role: `ADMIN` (can access Admin Dashboard)
 
 **OAuth2 Client (seeded in data.sql):**
 - Client ID: `frontend-client`
@@ -123,8 +134,23 @@ The frontend starts on `http://localhost:5173`.
 ### Pages
 - **Login** (`/login`) - Authentication and registration
 - **Token Manager** (`/tokens`) - View and revoke OAuth2 tokens
+- **Admin Dashboard** (`/admin`) - User and service token management (admin only)
 
 ## Architecture
+
+### Roles
+
+Users have a `role` field that determines their access level:
+- **USER** — Can log in, view their own tokens, and revoke them
+- **ADMIN** — Can do everything a USER can, plus access the Admin Dashboard to create users and manage service tokens
+
+### Service Tokens
+
+Service tokens (`srv_` prefixed) are long-lived API keys for service-to-service communication:
+- Created and managed by admins via the Admin Dashboard
+- Not tied to a user session — they authenticate as standalone credentials
+- Optional expiration date and scopes
+- The full token value is shown only once at creation time; afterwards only a masked preview is displayed
 
 ### Authentication Flow
 1. User enters credentials on the login page
