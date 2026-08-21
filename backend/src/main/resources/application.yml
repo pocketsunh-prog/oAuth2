@@ -1,0 +1,59 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: oauth2-server
+
+  # H2 Database configuration
+  datasource:
+    url: jdbc:h2:mem:oauth2db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # H2 Console (development only)
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # JPA / Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+    defer-datasource-initialization: true
+
+  # SQL initialization
+  sql:
+    init:
+      mode: always
+
+# Logging
+logging:
+  level:
+    com.oauth.server: DEBUG
+    org.springframework.security: INFO
+
+# Custom application settings
+app:
+  # Secret used to sign JWT tokens (use a strong secret in production)
+  jwt-secret: "my-very-long-and-secure-jwt-signing-secret-key-change-in-production-2024"
+  # Access token validity in seconds (1 hour)
+  access-token-validity: 3600
+  # Refresh token validity in seconds (7 days)
+  refresh-token-validity: 604800
+  # Issuer URL
+  issuer-uri: http://localhost:8080
+
+# SpringDoc OpenAPI
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
