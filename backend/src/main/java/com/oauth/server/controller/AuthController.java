@@ -2,6 +2,7 @@ package com.oauth.server.controller;
 
 import com.oauth.server.dto.*;
 import com.oauth.server.model.User;
+import com.oauth.server.model.UserToken;
 import com.oauth.server.service.CustomUserDetailsService;
 import com.oauth.server.service.TokenStorageService;
 import com.oauth.server.service.UserService;
@@ -11,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -108,6 +110,54 @@ public class AuthController {
                 .build();
 
         log.info("User {} logged in successfully", user.getUsername());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Refresh an expired access token using a valid refresh token.
+     * Implements refresh token rotation: a new access token AND a new refresh token
+     * are issued, and the old refresh token is invalidated.
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        // Look up the token record by refresh token value
+        UserToken token = tokenStorageService.findByRefreshToken(request.getRefreshToken())
+                .orElseThrow(() -> new AuthenticationException("Invalid refresh token") {});
+
+        // Reject revoked tokens
+        if (token.isRevoked()) {
+            throw new AuthenticationException("Refresh token has been revoked") {};
+        }
+
+        // Reject expired refresh tokens
+        if (token.getRefreshExpiresAt() != null
+                && token.getRefreshExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new AuthenticationException("Refresh token has expired") {};
+        }
+
+        // Generate a new token pair
+        String newAccessToken = "tk_" + UUID.randomUUID().toString().replace("-", "");
+        String newRefreshToken = "rt_" + UUID.randomUUID().toString().replace("-", "");
+        LocalDateTime newExpiresAt = LocalDateTime.now().plusSeconds(accessTokenValidity);
+
+        // Rotate: replace old tokens in the database
+        tokenStorageService.rotateTokens(token, newAccessToken, newRefreshToken, newExpiresAt);
+
+        User user = token.getUser();
+        AuthResponse response = AuthResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .tokenType("Bearer")
+                .expiresIn(accessTokenValidity)
+                .user(AuthResponse.UserInfo.builder()
+                        .id(user.getId())
+                        .username(user.getUsername())
+                        .email(user.getEmail())
+                        .role(user.getRole())
+                        .build())
+                .build();
+
+        log.info("Tokens refreshed for user {}", user.getUsername());
         return ResponseEntity.ok(response);
     }
 

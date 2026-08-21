@@ -47,6 +47,9 @@ public class UserToken {
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
+    @Column(name = "refresh_expires_at")
+    private LocalDateTime refreshExpiresAt;
+
     @Column(name = "revoked", nullable = false)
     private boolean revoked;
 

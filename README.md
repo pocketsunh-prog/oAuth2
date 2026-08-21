@@ -122,6 +122,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=mysql
 |--------|------|-------------|
 | POST | `/api/auth/register` | Register a new user |
 | POST | `/api/auth/login` | Log in, receive tokens |
+| POST | `/api/auth/refresh` | Refresh an expired access token |
 | GET  | `/api/auth/me` | Get current user profile |
 | GET  | `/api/tokens` | List user's tokens |
 | DELETE | `/api/tokens/{id}` | Revoke a token |
@@ -189,6 +190,20 @@ curl -X POST http://localhost:8080/api/auth/login \
 # List your tokens (replace <token> with the accessToken from login)
 curl http://localhost:8080/api/tokens \
   -H "Authorization: Bearer <token>"
+
+# Refresh an expired access token (returns a new access token + new refresh token)
+curl -X POST http://localhost:8080/api/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken":"rt_def456..."}'
+
+# Response:
+# {
+#   "accessToken": "tk_ghi789...",
+#   "refreshToken": "rt_jkl012...",
+#   "tokenType": "Bearer",
+#   "expiresIn": 3600,
+#   "user": { "id": 1, "username": "admin", "email": "admin@example.com", "role": "ADMIN" }
+# }
 
 # Get your profile
 curl http://localhost:8080/api/auth/me \
@@ -299,11 +314,20 @@ Service tokens (`srv_` prefixed) are long-lived API keys for service-to-service 
 
 ### Authentication Flow
 1. User enters credentials on the login page
-2. Backend validates credentials against the H2 database
-3. Backend generates access/refresh tokens and stores them in the database
-4. Frontend stores the access token in localStorage
-5. Subsequent API calls include the token in the `Authorization: Bearer <token>` header
-6. The `BearerTokenAuthenticationFilter` validates the token against the database
+2. Backend validates credentials against the database
+3. Backend generates an access token (1 hour) and a refresh token (7 days), stores them in the database
+4. Frontend stores both tokens in `localStorage`
+5. Subsequent API calls include the access token in the `Authorization: Bearer <token>` header
+6. The `BearerTokenAuthenticationFilter` validates the access token against the database
+
+### Token Refresh Flow
+When the access token expires (after 1 hour), the API returns `401 Unauthorized`. The frontend then:
+1. Automatically sends the stored refresh token to `POST /api/auth/refresh`
+2. The backend validates the refresh token and issues a **new** access token + **new** refresh token (token rotation)
+3. The old refresh token is invalidated — it cannot be reused
+4. The frontend persists the new tokens and retries the original request
+
+This means users stay logged in for up to 7 days without re-entering credentials, and refresh token rotation prevents stolen refresh tokens from being reused. If the refresh token expires or is revoked, the user must log in again.
 
 ### Token Management
 - Tokens are stored in the `user_tokens` table

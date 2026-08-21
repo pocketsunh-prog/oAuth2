@@ -1,12 +1,95 @@
 /**
  * API client for communicating with the OAuth2 backend.
  * All requests go through the Vite proxy to avoid CORS issues.
+ *
+ * Features automatic token refresh: when a request receives a 401, the client
+ * uses the stored refresh token to obtain a new access token, then retries the
+ * original request. Subscribers (e.g. AuthContext) are notified of the new token.
  */
 
 const API_BASE = '/api';
 
+// --- Token refresh coordination --------------------------------------------
+
+// Tracks an in-flight refresh so concurrent 401s share a single refresh request.
+let refreshPromise = null;
+
+// Subscribers notified with the new access token after a successful refresh.
+const tokenSubscribers = new Set();
+
+/**
+ * Register a callback that will be invoked with the new access token
+ * whenever the tokens are refreshed. Returns an unsubscribe function.
+ */
+export function onTokenRefresh(callback) {
+  tokenSubscribers.add(callback);
+  return () => tokenSubscribers.delete(callback);
+}
+
+function notifyTokenRefresh(accessToken) {
+  tokenSubscribers.forEach((cb) => cb(accessToken));
+}
+
+/**
+ * Refresh the access token using the refresh token stored in localStorage.
+ * Updates localStorage with the new token pair. Only one refresh runs at a time;
+ * concurrent callers share the same promise.
+ *
+ * @returns {Promise<string>} the new access token
+ * @throws {Error} if no refresh token exists or the refresh fails
+ */
+async function refreshTokens() {
+  // Reuse an already-running refresh if one is in progress.
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    const storedRefreshToken = localStorage.getItem('refresh_token');
+    if (!storedRefreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    const response = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: storedRefreshToken }),
+    });
+
+    if (!response.ok) {
+      // Refresh failed — clear stored tokens so we don't keep retrying.
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      throw new Error('Session expired. Please log in again.');
+    }
+
+    const data = await response.json();
+
+    // Persist the new token pair.
+    localStorage.setItem('access_token', data.accessToken);
+    localStorage.setItem('refresh_token', data.refreshToken);
+
+    // Notify subscribers (e.g. AuthContext) so React state stays in sync.
+    notifyTokenRefresh(data.accessToken);
+
+    return data.accessToken;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+// --- Core request helper ---------------------------------------------------
+
+/**
+ * Paths that should never trigger a refresh-and-retry cycle.
+ */
+const UNAUTHENTICATED_PATHS = new Set(['/auth/login', '/auth/register', '/auth/refresh']);
+
 /**
  * Make an API request with optional authentication.
+ * On a 401 response, automatically refreshes the token and retries once.
  *
  * @param {string} path - API path (e.g., '/auth/login')
  * @param {object} options - fetch options
@@ -14,22 +97,29 @@ const API_BASE = '/api';
  * @returns {Promise<object>} parsed JSON response
  */
 async function apiRequest(path, options = {}, token = null) {
-  const headers = {
+  const buildHeaders = (accessToken) => ({
     'Content-Type': 'application/json',
     ...options.headers,
-  };
-
-  // Add authorization header if token is provided
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
   });
 
-  // Handle non-JSON error responses
+  const url = `${API_BASE}${path}`;
+
+  // First attempt
+  let response = await fetch(url, { ...options, headers: buildHeaders(token) });
+
+  // If unauthorized and this isn't an auth endpoint, try to refresh and retry.
+  if (response.status === 401 && !UNAUTHENTICATED_PATHS.has(path)) {
+    try {
+      const newToken = await refreshTokens();
+      response = await fetch(url, { ...options, headers: buildHeaders(newToken) });
+    } catch (refreshError) {
+      // Refresh failed — surface a clear error; original 401 is irrelevant.
+      throw refreshError;
+    }
+  }
+
+  // Handle error responses
   if (!response.ok) {
     let errorMessage = `Request failed with status ${response.status}`;
     try {
@@ -48,6 +138,8 @@ async function apiRequest(path, options = {}, token = null) {
 
   return response.json();
 }
+
+// --- API method groups -----------------------------------------------------
 
 /**
  * Authentication API methods.
@@ -80,6 +172,17 @@ export const authApi = {
    */
   getProfile: (token) =>
     apiRequest('/auth/me', {}, token),
+
+  /**
+   * Refresh the access token.
+   * @param {string} refreshToken - the refresh token
+   * @returns {Promise<object>} new auth response with tokens
+   */
+  refresh: (refreshToken) =>
+    apiRequest('/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
+    }),
 };
 
 /**

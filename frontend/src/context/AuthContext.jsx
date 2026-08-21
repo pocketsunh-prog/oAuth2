@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { authApi } from '../api/client';
+import { authApi, onTokenRefresh } from '../api/client';
 
 /**
  * Authentication context.
@@ -38,6 +38,14 @@ export function AuthProvider({ children }) {
     }
 
     setLoading(false);
+  }, []);
+
+  // Keep React state in sync when the API client auto-refreshes the token
+  useEffect(() => {
+    const unsubscribe = onTokenRefresh((newAccessToken) => {
+      setAccessToken(newAccessToken);
+    });
+    return unsubscribe;
   }, []);
 
   /**
