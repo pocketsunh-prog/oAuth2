@@ -76,6 +76,8 @@ The backend starts on `http://localhost:8080`.
 | GET  | `/api/tokens` | List user's tokens |
 | DELETE | `/api/tokens/{id}` | Revoke a token |
 | DELETE | `/api/tokens` | Revoke all tokens |
+| GET  | `/api/time` | Get current server time (public) |
+| GET  | `/api/time/auth` | Get current server time + auth info (requires token) |
 
 ### Admin API Endpoints (require ADMIN role)
 
@@ -114,6 +116,99 @@ The backend starts on `http://localhost:8080`.
 - Grant Types: `authorization_code`, `refresh_token`, `client_credentials`
 - Scopes: `read`, `write`
 - Redirect URI: `http://localhost:5173/callback`
+
+### Curl Examples
+
+**User Authentication & Token Management**
+
+```bash
+# Log in as admin (returns access token + user info)
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+
+# Response:
+# {
+#   "accessToken": "tk_abc123...",
+#   "refreshToken": "rt_def456...",
+#   "tokenType": "Bearer",
+#   "expiresIn": 3600,
+#   "user": { "id": 1, "username": "admin", "email": "admin@example.com", "role": "ADMIN" }
+# }
+
+# List your tokens (replace <token> with the accessToken from login)
+curl http://localhost:8080/api/tokens \
+  -H "Authorization: Bearer <token>"
+
+# Get your profile
+curl http://localhost:8080/api/auth/me \
+  -H "Authorization: Bearer <token>"
+```
+
+**Admin: User Management**
+
+```bash
+# Create a new user (requires admin token)
+curl -X POST http://localhost:8080/api/admin/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin_token>" \
+  -d '{"username":"john","email":"john@example.com","password":"password123","role":"USER"}'
+
+# List all users (requires admin token)
+curl http://localhost:8080/api/admin/users \
+  -H "Authorization: Bearer <admin_token>"
+```
+
+**Admin: Service Token Management**
+
+```bash
+# Create a service token (requires admin token)
+curl -X POST http://localhost:8080/api/admin/service-tokens \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin_token>" \
+  -d '{"name":"My Service","scopes":"read,write","expiresInDays":30}'
+
+# Response:
+# {
+#   "id": 1,
+#   "name": "My Service",
+#   "tokenPreview": "srv_a1b2c3d4...",   <-- full token, shown only once!
+#   "scopes": "read,write",
+#   "issuedBy": "admin",
+#   "issuedAt": "2026-08-21T14:30:00",
+#   "expiresAt": "2026-09-20T14:30:00",
+#   "revoked": false,
+#   "expired": false
+# }
+
+# List all service tokens (requires admin token)
+curl http://localhost:8080/api/admin/service-tokens \
+  -H "Authorization: Bearer <admin_token>"
+
+# Revoke a service token (requires admin token)
+curl -X DELETE http://localhost:8080/api/admin/service-tokens/1 \
+  -H "Authorization: Bearer <admin_token>"
+```
+
+**Time Service (Token Testing)**
+
+```bash
+# Get current server time (no auth required)
+curl http://localhost:8080/api/time
+
+# Get current server time + auth info (requires valid token)
+# Works with both user tokens and service tokens
+curl http://localhost:8080/api/time/auth \
+  -H "Authorization: Bearer <token>"
+
+# Response:
+# {
+#   "timestamp": "2026-08-21T14:30:00",
+#   "message": "Token is valid",
+#   "principal": "admin",
+#   "authorities": "[ROLE_ADMIN]"
+# }
+```
 
 ## Frontend
 

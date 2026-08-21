@@ -225,9 +225,12 @@ function ServiceTokenManagementSection({ accessToken }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Available scopes
+  const availableScopes = ['read', 'write'];
+
   // Form state
   const [name, setName] = useState('');
-  const [scopes, setScopes] = useState('');
+  const [selectedScopes, setSelectedScopes] = useState([]);
   const [expiresInDays, setExpiresInDays] = useState('');
   const [creating, setCreating] = useState(false);
   const [newToken, setNewToken] = useState(null);
@@ -267,13 +270,13 @@ function ServiceTokenManagementSection({ accessToken }) {
       const expires = expiresInDays ? parseInt(expiresInDays, 10) : null;
       const result = await adminApi.createServiceToken(accessToken, {
         name,
-        scopes: scopes || null,
+        scopes: selectedScopes.length > 0 ? selectedScopes.join(',') : null,
         expiresInDays: expires,
       });
       setNewToken(result);
       // Reset form
       setName('');
-      setScopes('');
+      setSelectedScopes([]);
       setExpiresInDays('');
       // Reload token list
       await loadTokens();
@@ -368,13 +371,25 @@ function ServiceTokenManagementSection({ accessToken }) {
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Scopes</label>
-            <input
-              type="text"
-              value={scopes}
-              onChange={(e) => setScopes(e.target.value)}
-              className="input-field text-sm"
-              placeholder="read,write (optional)"
-            />
+            <div className="flex items-center gap-4 py-2">
+              {availableScopes.map((scope) => (
+                <label key={scope} className="flex items-center gap-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedScopes.includes(scope)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedScopes([...selectedScopes, scope]);
+                      } else {
+                        setSelectedScopes(selectedScopes.filter((s) => s !== scope));
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className="text-sm text-slate-700">{scope}</span>
+                </label>
+              ))}
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Expires In (days)</label>

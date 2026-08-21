@@ -100,6 +100,7 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/login",
                     "/api/auth/register",
+                    "/api/time",
                     "/oauth2/**",
                     "/.well-known/**",
                     "/swagger-ui/**",
