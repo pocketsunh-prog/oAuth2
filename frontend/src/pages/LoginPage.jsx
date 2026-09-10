@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authApi, otpApi } from '../api/client';
 
@@ -8,7 +7,6 @@ import { authApi, otpApi } from '../api/client';
  * Provides forms for login, OTP verification, and registration.
  */
 export default function LoginPage() {
-  const navigate = useNavigate();
   const { setSession } = useAuth();
 
   // View mode: 'login' | 'register' | 'otp'
@@ -48,9 +46,11 @@ export default function LoginPage() {
         return;
       }
 
-      // Direct login (no OTP) — update context and redirect
+      // Direct login (no OTP) — store tokens and redirect.
+      // Use window.location.href to force a full page reload so the
+      // AuthContext re-reads the new token from localStorage.
       setSession(response);
-      navigate('/tokens');
+      window.location.href = '/tokens';
     } catch (err) {
       setError(err.message);
     } finally {
@@ -69,7 +69,7 @@ export default function LoginPage() {
     try {
       const response = await otpApi.verifyLogin(tempToken, otpCode);
       setSession(response);
-      navigate('/tokens');
+      window.location.href = '/tokens';
     } catch (err) {
       setError(err.message);
       setOtpCode('');

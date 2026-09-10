@@ -231,7 +231,9 @@ public class AuthController {
         tokenStorageService.rotateTokens(token, newAccessToken, newRefreshToken, newExpiresAt);
 
         User user = token.getUser();
-        AuthResponse response = buildAuthResponse(user, newAccessToken, newRefreshToken);
+        // Build the response WITHOUT calling storeToken — rotateTokens
+        // already updated the existing token row in the database.
+        AuthResponse response = buildResponseWithoutStoring(user, newAccessToken, newRefreshToken);
 
         log.info("Tokens refreshed for user {}", user.getUsername());
         return ResponseEntity.ok(response);
@@ -261,6 +263,7 @@ public class AuthController {
 
     /**
      * Build a full auth response with new tokens for the given user.
+     * Stores the tokens in the database (used for login / OTP verification).
      */
     private AuthResponse buildAuthResponse(User user) {
         String accessToken = "tk_" + UUID.randomUUID().toString().replace("-", "");
@@ -270,6 +273,7 @@ public class AuthController {
 
     /**
      * Build a full auth response with specified tokens.
+     * Stores the tokens in the database (used for login / OTP verification).
      */
     private AuthResponse buildAuthResponse(User user, String accessToken, String refreshToken) {
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(accessTokenValidity);
@@ -284,6 +288,14 @@ public class AuthController {
                 expiresAt
         );
 
+        return buildResponseWithoutStoring(user, accessToken, refreshToken);
+    }
+
+    /**
+     * Build an auth response WITHOUT storing tokens in the database.
+     * Used by the refresh flow, where rotateTokens already updated the row.
+     */
+    private AuthResponse buildResponseWithoutStoring(User user, String accessToken, String refreshToken) {
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
