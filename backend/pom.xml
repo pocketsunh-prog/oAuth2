@@ -60,6 +60,25 @@
             <artifactId>spring-security-oauth2-authorization-server</artifactId>
         </dependency>
 
+        <!-- Apache Commons Codec (Base32 for TOTP) -->
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>1.17.1</version>
+        </dependency>
+
+        <!-- ZXing (QR code generation for TOTP setup) -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>javase</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+
         <!-- H2 Database (development) -->
         <dependency>
             <groupId>com.h2database</groupId>

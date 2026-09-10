@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import TokenManagerPage from './pages/TokenManagerPage';
+import OtpSetupPage from './pages/OtpSetupPage';
 import AdminPage from './pages/AdminPage';
 import AdminRoute from './components/AdminRoute';
 import Layout from './components/Layout';
@@ -35,6 +36,7 @@ export default function App() {
       }>
         <Route index element={<Navigate to="/tokens" replace />} />
         <Route path="tokens" element={<TokenManagerPage />} />
+        <Route path="otp-setup" element={<OtpSetupPage />} />
         <Route path="admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
       </Route>
 

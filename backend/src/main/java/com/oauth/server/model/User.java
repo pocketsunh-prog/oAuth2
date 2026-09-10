@@ -38,6 +38,15 @@ public class User {
     @Column(name = "role", nullable = false, length = 20)
     private String role = "USER";
 
+    /** TOTP secret key (Base32-encoded). Null if 2FA is not enabled. */
+    @Column(name = "totp_secret", length = 64)
+    private String totpSecret;
+
+    /** Whether TOTP two-factor authentication is enabled. */
+    @Builder.Default
+    @Column(name = "totp_enabled", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private boolean totpEnabled = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

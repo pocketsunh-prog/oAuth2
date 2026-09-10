@@ -12,6 +12,7 @@ export default function Layout() {
   // Navigation items
   const navItems = [
     { path: '/tokens', label: 'Token Manager', icon: '🔑' },
+    { path: '/otp-setup', label: 'Two-Factor Auth', icon: '🔐' },
   ];
 
   // Add admin dashboard link for admin users

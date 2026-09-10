@@ -28,7 +28,7 @@ OAuth/
 │   │       │   ├── controller/     # REST controllers (Auth, Token, Exception Handler)
 │   │       │   ├── model/          # JPA entities (User, OAuth2Client, UserToken)
 │   │       │   ├── repository/     # Spring Data JPA repositories
-│   │       │   ├── service/        # Business logic services
+│   │       │   ├── service/        # Business logic services (incl. TOTP)
 │   │       │   ├── dto/            # Data transfer objects
 │   │       │   └── security/       # Custom authentication filter & provider
 │   │       └── resources/
@@ -36,19 +36,38 @@ OAuth/
 │   │           └── data.sql        # Seed data
 │   └── pom.xml
 │
-└── frontend/         # React + Tailwind CSS Frontend
-    ├── src/
-    │   ├── api/          # API client
-    │   ├── components/   # Reusable components (Layout)
-    │   ├── context/      # Auth context provider
-    │   ├── pages/        # LoginPage, TokenManagerPage
-    │   ├── App.jsx
-    │   ├── main.jsx
-    │   └── index.css
-    ├── index.html
-    ├── vite.config.js
-    ├── tailwind.config.js
-    └── package.json
+├── frontend/         # React + Tailwind CSS Frontend
+│   ├── src/
+│   │   ├── api/          # API client (incl. OTP methods)
+│   │   ├── components/   # Reusable components (Layout)
+│   │   ├── context/      # Auth context provider
+│   │   ├── pages/        # LoginPage, TokenManagerPage, OtpSetupPage
+│   │   ├── App.jsx
+│   │   ├── main.jsx
+│   │   └── index.css
+│   ├── index.html
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   └── package.json
+│
+└── android/          # Kotlin Android TOTP Authenticator App
+    ├── app/
+    │   ├── build.gradle.kts
+    │   └── src/main/
+    │       ├── AndroidManifest.xml
+    │       ├── java/com/oauth/otp/
+    │       │   ├── MainActivity.kt
+    │       │   ├── AddAccountActivity.kt
+    │       │   ├── TotpGenerator.kt
+    │       │   ├── AccountStorage.kt
+    │       │   └── AccountAdapter.kt
+    │       └── res/
+    │           ├── layout/
+    │           ├── values/
+    │           └── menu/
+    ├── build.gradle.kts
+    ├── settings.gradle.kts
+    └── README.md
 ```
 
 ## Backend
@@ -121,7 +140,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=mysql
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/auth/register` | Register a new user |
-| POST | `/api/auth/login` | Log in, receive tokens |
+| POST | `/api/auth/login` | Log in (returns tokens or OTP-required) |
 | POST | `/api/auth/refresh` | Refresh an expired access token |
 | GET  | `/api/auth/me` | Get current user profile |
 | GET  | `/api/tokens` | List user's tokens |
@@ -129,6 +148,16 @@ mvn spring-boot:run -Dspring-boot.run.profiles=mysql
 | DELETE | `/api/tokens` | Revoke all tokens |
 | GET  | `/api/time` | Get current server time (public) |
 | GET  | `/api/time/auth` | Get current server time + auth info (requires token) |
+
+### TOTP Two-Factor Authentication Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET  | `/api/auth/otp/status` | Get current user's TOTP status |
+| POST | `/api/auth/otp/setup` | Set up TOTP (returns secret + QR code) |
+| POST | `/api/auth/otp/verify-setup` | Verify and enable TOTP |
+| POST | `/api/auth/otp/disable` | Disable TOTP |
+| POST | `/api/auth/otp/verify-login` | Verify OTP code during login (header: `X-Temp-Token`) |
 
 ### Admin API Endpoints (require ADMIN role)
 
@@ -292,8 +321,9 @@ npm run dev
 The frontend starts on `http://localhost:5173`.
 
 ### Pages
-- **Login** (`/login`) - Authentication and registration
+- **Login** (`/login`) - Authentication with TOTP/OTP 2FA support
 - **Token Manager** (`/tokens`) - View and revoke OAuth2 tokens
+- **Two-Factor Auth** (`/otp-setup`) - Enable/disable TOTP with QR code
 - **Admin Dashboard** (`/admin`) - User and service token management (admin only)
 
 ## Architecture
@@ -334,3 +364,27 @@ This means users stay logged in for up to 7 days without re-entering credentials
 - Each token is associated with a user and client
 - Users can list, view, and revoke their tokens
 - Revoked tokens are immediately invalidated
+
+## Android App — TOTP Authenticator
+
+A native Android app that generates TOTP codes compatible with the OAuth2 server and Google Authenticator.
+
+### Features
+- **TOTP Code Generation** — RFC 6238 compliant (HMAC-SHA1, 6 digits, 30-second window)
+- **Account Management** — Add, view, and delete TOTP accounts
+- **QR Code Support** — Parse `otpauth://` URIs from the web app's 2FA setup
+- **Countdown Timer** — Visual countdown showing seconds until code refresh
+- **Manual Entry** — Enter secret keys manually or generate new ones
+
+### Setup
+1. Open the `android/` folder in Android Studio
+2. Sync the project with Gradle
+3. Run on an emulator or device (API 24+)
+
+### Adding an Account
+1. Open the web app → **Two-Factor Auth** → **Set up 2FA**
+2. Copy the secret key or `otpauth://` URI
+3. In the Android app, paste the URI or enter the secret manually
+4. The app generates codes that the server accepts during login
+
+See `android/README.md` for full documentation.

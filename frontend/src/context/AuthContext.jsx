@@ -67,6 +67,21 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
+   * Set the session directly from an auth response object.
+   * Used after OTP verification or when the token is obtained outside
+   * the standard login flow (e.g. from the LoginPage).
+   */
+  const setSession = useCallback((response) => {
+    setUser(response.user);
+    setAccessToken(response.accessToken);
+
+    // Persist to localStorage
+    localStorage.setItem('access_token', response.accessToken);
+    localStorage.setItem('refresh_token', response.refreshToken);
+    localStorage.setItem('user', JSON.stringify(response.user));
+  }, []);
+
+  /**
    * Register a new user account.
    */
   const register = useCallback(async (username, email, password) => {
@@ -92,6 +107,7 @@ export function AuthProvider({ children }) {
     accessToken,
     loading,
     login,
+    setSession,
     register,
     logout,
     isAuthenticated: !!accessToken,

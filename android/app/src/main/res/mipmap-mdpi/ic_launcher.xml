@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simple key icon for the launcher (works on all API levels) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <!-- Key head (circle) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M18,12 m-8,0 a8,8 0,1 1,16 0 a8,8 0,1 1,-16 0" />
+
+    <!-- Key shaft -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,20 L40,36 L36,40 L20,24 Z" />
+
+    <!-- Key hole -->
+    <path
+        android:fillColor="#2563EB"
+        android:pathData="M18,12 m-4,0 a4,4 0,1 1,8 0 a4,4 0,1 1,-8 0" />
+
+</vector>

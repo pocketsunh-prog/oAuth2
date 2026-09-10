@@ -147,22 +147,55 @@ async function apiRequest(path, options = {}, token = null) {
 export const authApi = {
   /**
    * Log in with username and password.
-   * @returns {Promise<object>} auth response with tokens
+   * Returns either an AuthResponse (with tokens) or OtpRequiredResponse
+   * (with tempToken) when 2FA is enabled.
+   *
+   * This method does NOT use the authenticated apiRequest helper
+   * (no bearer token needed for login).
+   *
+   * @returns {Promise<object>} auth response or OTP-required response
    */
   login: (username, password) =>
-    apiRequest('/auth/login', {
+    fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
+    }).then(async (response) => {
+      if (!response.ok) {
+        let errorMessage = `Login failed with status ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          // Response was not JSON
+        }
+        throw new Error(errorMessage);
+      }
+      return response.json();
     }),
 
   /**
    * Register a new user.
+   * This method does NOT use the authenticated apiRequest helper.
    * @returns {Promise<object>} user profile
    */
   register: (username, email, password) =>
-    apiRequest('/auth/register', {
+    fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, email, password }),
+    }).then(async (response) => {
+      if (!response.ok) {
+        let errorMessage = `Registration failed with status ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          // Response was not JSON
+        }
+        throw new Error(errorMessage);
+      }
+      return response.json();
     }),
 
   /**
@@ -212,6 +245,75 @@ export const tokenApi = {
    */
   revokeAllTokens: (token) =>
     apiRequest('/tokens', { method: 'DELETE' }, token),
+};
+
+/**
+ * OTP / Two-Factor Authentication API methods.
+ */
+export const otpApi = {
+  /**
+   * Get the current user's OTP status.
+   * @param {string} token - bearer token
+   * @returns {Promise<object>} { totpEnabled: boolean }
+   */
+  getStatus: (token) =>
+    apiRequest('/auth/otp/status', {}, token),
+
+  /**
+   * Set up TOTP for the current user.
+   * @param {string} token - bearer token
+   * @returns {Promise<object>} { secret, otpauthUri, qrCodeBase64, alreadyEnabled }
+   */
+  setup: (token) =>
+    apiRequest('/auth/otp/setup', { method: 'POST' }, token),
+
+  /**
+   * Verify and enable TOTP setup.
+   * @param {string} token - bearer token
+   * @param {string} code - 6-digit code from authenticator app
+   * @returns {Promise<object>} confirmation message
+   */
+  verifySetup: (token, code) =>
+    apiRequest('/auth/otp/verify-setup', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }, token),
+
+  /**
+   * Disable TOTP for the current user.
+   * @param {string} token - bearer token
+   * @returns {Promise<object>} confirmation message
+   */
+  disable: (token) =>
+    apiRequest('/auth/otp/disable', { method: 'POST' }, token),
+
+  /**
+   * Verify OTP code during login (second step).
+   * @param {string} tempToken - temporary token from login response
+   * @param {string} code - 6-digit code from authenticator app
+   * @returns {Promise<object>} auth response with tokens
+   */
+  verifyLogin: (tempToken, code) =>
+    fetch(`${API_BASE}/auth/otp/verify-login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Temp-Token': tempToken,
+      },
+      body: JSON.stringify({ code }),
+    }).then(async (response) => {
+      if (!response.ok) {
+        let errorMessage = `Request failed with status ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          // Response was not JSON
+        }
+        throw new Error(errorMessage);
+      }
+      return response.json();
+    }),
 };
 
 /**

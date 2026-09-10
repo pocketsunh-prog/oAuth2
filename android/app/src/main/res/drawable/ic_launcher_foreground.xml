@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Foreground vector for the launcher icon: a key symbol -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Key body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,30 C44,30 36,38 36,48 C36,51.5 37,54.8 38.7,57.6 L36,60.3 L36,66 L42,66 L42,60.3 L40.3,58.6 C43.2,60.3 46.5,61.3 50,61.3 C60,61.3 68,53.3 68,43.3 C68,38 66,33 62.5,29.2 C66.2,31.5 68.5,35.5 68.5,40 C68.5,47.2 62.7,53 55.5,53 C52.5,53 49.7,52 47.5,50.2 C49.3,53.5 53,55.8 57,55.8 C63.6,55.8 69,50.4 69,43.8 C69,37.5 64.1,32.3 58,31.8 C56.5,31.6 55.2,31.7 54,32 Z" />
+
+    <!-- Key hole -->
+    <path
+        android:fillColor="#2563EB"
+        android:pathData="M54,38 C50.7,38 48,40.7 48,44 C48,47.3 50.7,50 54,50 C57.3,50 60,47.3 60,44 C60,40.7 57.3,38 54,38 Z" />
+
+    <!-- Key teeth -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M72,58 L82,68 L78,72 L68,62 Z" />
+
+</vector>

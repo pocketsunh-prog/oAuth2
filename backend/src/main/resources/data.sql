@@ -1,12 +1,13 @@
 -- Initial data: default admin user (password: admin123)
 -- The password is BCrypt-encoded for "admin123"
-MERGE INTO users (id, username, email, password, enabled, role, created_at, updated_at) VALUES (
+MERGE INTO users (id, username, email, password, enabled, role, totp_enabled, created_at, updated_at) VALUES (
     1,
     'admin',
     'admin@example.com',
     '$2a$10$p36zo/NWDPFSWdOa2ZGbm.wmN9UAQtdxSSnNzB8aXFSVee3BI5Lzq',
     true,
     'ADMIN',
+    false,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 );

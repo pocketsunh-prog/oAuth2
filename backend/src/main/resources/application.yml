@@ -43,8 +43,8 @@ logging:
 app:
   # Secret used to sign JWT tokens (use a strong secret in production)
   jwt-secret: "my-very-long-and-secure-jwt-signing-secret-key-change-in-production-2024"
-  # Access token validity in seconds (1 hour)
-  access-token-validity: 3600
+  # Access token validity in seconds (30 minutes)
+  access-token-validity: 1800
   # Refresh token validity in seconds (7 days)
   refresh-token-validity: 604800
   # Issuer URL
