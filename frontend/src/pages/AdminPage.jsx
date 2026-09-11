@@ -32,20 +32,28 @@ export default function AdminPage() {
 
 /**
  * User Management section of the admin dashboard.
- * Allows admins to create users and view all users.
+ * Allows admins to create, view, and edit users including TOTP settings.
  */
 function UserManagementSection({ accessToken }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Form state
+  // Create user form state
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('USER');
   const [creating, setCreating] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Edit user modal state
+  const [editingUser, setEditingUser] = useState(null);
+  const [editEmail, setEditEmail] = useState('');
+  const [editRole, setEditRole] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [editTotpEnabled, setEditTotpEnabled] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   /**
    * Load all users from the API.
@@ -95,6 +103,62 @@ function UserManagementSection({ accessToken }) {
     }
   };
 
+  /**
+   * Open the edit modal for a user.
+   */
+  const handleEditUser = (user) => {
+    setEditingUser(user);
+    setEditEmail(user.email);
+    setEditRole(user.role);
+    setEditPassword('');
+    setEditTotpEnabled(user.totpEnabled || false);
+    setError('');
+    setSuccessMsg('');
+  };
+
+  /**
+   * Close the edit modal.
+   */
+  const handleCloseEdit = () => {
+    setEditingUser(null);
+    setEditPassword('');
+  };
+
+  /**
+   * Handle user update form submission.
+   */
+  const handleUpdateUser = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccessMsg('');
+    setSaving(true);
+
+    try {
+      // Only include fields that have changed
+      const updateData = {};
+      if (editEmail !== editingUser.email) updateData.email = editEmail;
+      if (editRole !== editingUser.role) updateData.role = editRole;
+      if (editPassword) updateData.password = editPassword;
+      if (editTotpEnabled !== (editingUser.totpEnabled || false)) {
+        updateData.totpEnabled = editTotpEnabled;
+      }
+
+      await adminApi.updateUser(accessToken, editingUser.id, updateData);
+      setSuccessMsg(`User "${editingUser.username}" updated successfully!`);
+      // Reload user list
+      await loadUsers();
+      // Close modal after a short delay
+      setTimeout(() => {
+        handleCloseEdit();
+        setSuccessMsg('');
+      }, 1000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="card">
       <h2 className="text-lg font-semibold text-slate-800 mb-4">
@@ -105,13 +169,13 @@ function UserManagementSection({ accessToken }) {
       <form onSubmit={handleCreateUser} className="mb-6 p-4 bg-slate-50 rounded-lg">
         <h3 className="text-sm font-medium text-slate-700 mb-3">Create New User</h3>
 
-        {error && (
+        {error && !editingUser && (
           <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded">
             <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
 
-        {successMsg && (
+        {successMsg && !editingUser && (
           <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded">
             <p className="text-sm text-green-600">{successMsg}</p>
           </div>
@@ -192,6 +256,8 @@ function UserManagementSection({ accessToken }) {
                   <th className="text-left py-2 px-2 font-medium text-slate-600">Username</th>
                   <th className="text-left py-2 px-2 font-medium text-slate-600">Email</th>
                   <th className="text-left py-2 px-2 font-medium text-slate-600">Role</th>
+                  <th className="text-left py-2 px-2 font-medium text-slate-600">2FA</th>
+                  <th className="text-right py-2 px-2 font-medium text-slate-600">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -205,6 +271,19 @@ function UserManagementSection({ accessToken }) {
                         {u.role}
                       </span>
                     </td>
+                    <td className="py-2 px-2">
+                      <span className={`badge ${u.totpEnabled ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
+                        {u.totpEnabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </td>
+                    <td className="py-2 px-2 text-right">
+                      <button
+                        onClick={() => handleEditUser(u)}
+                        className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                      >
+                        Edit
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -212,6 +291,120 @@ function UserManagementSection({ accessToken }) {
           </div>
         )}
       </div>
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-slate-800">
+                  Edit User: {editingUser.username}
+                </h3>
+                <button
+                  onClick={handleCloseEdit}
+                  className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+                >
+                  &times;
+                </button>
+              </div>
+
+              {error && (
+                <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded">
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
+
+              {successMsg && (
+                <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded">
+                  <p className="text-sm text-green-600">{successMsg}</p>
+                </div>
+              )}
+
+              <form onSubmit={handleUpdateUser} className="space-y-4">
+                {/* Email */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    className="input-field text-sm"
+                    required
+                  />
+                </div>
+
+                {/* Role */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Role</label>
+                  <select
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value)}
+                    className="input-field text-sm"
+                  >
+                    <option value="USER">User</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                </div>
+
+                {/* Password */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Password <span className="text-slate-400">(leave blank to keep current)</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    className="input-field text-sm"
+                    placeholder="Min 6 characters"
+                    minLength={6}
+                  />
+                </div>
+
+                {/* TOTP Toggle */}
+                <div className="p-3 bg-slate-50 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">Two-Factor Authentication</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {editTotpEnabled ? '2FA is enabled for this user' : '2FA is disabled for this user'}
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editTotpEnabled}
+                        onChange={(e) => setEditTotpEnabled(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="btn-primary flex-1 text-sm"
+                  >
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCloseEdit}
+                    className="btn-secondary flex-1 text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -117,4 +117,12 @@ public class UserService {
     public List<User> findAllUsers() {
         return userRepository.findAll();
     }
+
+    /**
+     * Save (update) a user entity.
+     */
+    @Transactional
+    public User save(User user) {
+        return userRepository.save(user);
+    }
 }

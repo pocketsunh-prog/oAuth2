@@ -341,6 +341,19 @@ export const adminApi = {
     apiRequest('/admin/users', {}, token),
 
   /**
+   * Update a user (admin only).
+   * @param {string} token - bearer token
+   * @param {number} userId - ID of the user to update
+   * @param {object} userData - { email?, role?, password?, totpEnabled? }
+   * @returns {Promise<object>} updated user info
+   */
+  updateUser: (token, userId, { email, role, password, totpEnabled }) =>
+    apiRequest(`/admin/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ email, role, password, totpEnabled }),
+    }, token),
+
+  /**
    * Create a new service token (admin only).
    * @param {string} token - bearer token
    * @param {object} tokenData - { name, scopes, expiresInDays }
