@@ -49,6 +49,8 @@ app:
   refresh-token-validity: 604800
   # Issuer URL
   issuer-uri: http://localhost:8080
+  # Single Sign-On: when true, revokes all existing tokens on login
+  enable-sso: true
 
 # SpringDoc OpenAPI
 springdoc:

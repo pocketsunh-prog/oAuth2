@@ -6,6 +6,7 @@ import com.oauth.server.model.User;
 import com.oauth.server.model.UserToken;
 import com.oauth.server.service.CustomUserDetailsService;
 import com.oauth.server.service.OtpService;
+import com.oauth.server.service.TokenManagerService;
 import com.oauth.server.service.TokenStorageService;
 import com.oauth.server.service.UserService;
 import jakarta.validation.Valid;
@@ -39,6 +40,7 @@ public class AuthController {
     private final CustomUserDetailsService userDetailsService;
     private final PasswordEncoder passwordEncoder;
     private final TokenStorageService tokenStorageService;
+    private final TokenManagerService tokenManagerService;
     private final OtpService otpService;
 
     @Value("${app.access-token-validity}")
@@ -46,6 +48,9 @@ public class AuthController {
 
     @Value("${app.refresh-token-validity}")
     private long refreshTokenValidity;
+
+    @Value("${app.enable-sso:true}")
+    private boolean enableSso;
 
     /**
      * Register a new user account.
@@ -99,6 +104,9 @@ public class AuthController {
             return ResponseEntity.ok(otpRequired);
         }
 
+        // SSO: revoke all existing tokens before issuing new ones
+        revokeAllTokensIfSsoEnabled(user);
+
         // No TOTP - generate tokens immediately
         return ResponseEntity.ok(buildAuthResponse(user));
     }
@@ -131,6 +139,9 @@ public class AuthController {
 
         // Remove the temp token
         otpService.removeTempLogin(tempToken);
+
+        // SSO: revoke all existing tokens before issuing new ones
+        revokeAllTokensIfSsoEnabled(user);
 
         // Generate and return the auth response
         log.info("OTP login successful for user: {}", user.getUsername());
@@ -309,5 +320,20 @@ public class AuthController {
                         .totpEnabled(otpService.isTotpEnabled(user))
                         .build())
                 .build();
+    }
+
+    /**
+     * If SSO is enabled, revoke all existing tokens for the user.
+     * This ensures only one active session at a time.
+     */
+    private void revokeAllTokensIfSsoEnabled(User user) {
+        if (!enableSso) {
+            return;
+        }
+
+        int revoked = tokenManagerService.revokeAllTokens(user);
+        if (revoked > 0) {
+            log.info("SSO: revoked {} existing tokens for user {}", revoked, user.getUsername());
+        }
     }
 }
