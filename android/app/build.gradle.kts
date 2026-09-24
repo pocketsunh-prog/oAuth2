@@ -71,4 +71,5 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     implementation("commons-codec:commons-codec:1.17.1")
+    implementation("androidx.biometric:biometric:1.1.0")
 }

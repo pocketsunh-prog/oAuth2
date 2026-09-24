@@ -9,12 +9,16 @@ import androidx.recyclerview.widget.RecyclerView
 
 /**
  * RecyclerView adapter for displaying TOTP accounts with their current codes.
+ * When not authenticated, codes are masked with asterisks.
  */
 class AccountAdapter(
     private val accounts: MutableList<TotpAccount>,
     private val totpGenerator: TotpGenerator,
     private val onDeleteClick: (Int) -> Unit
 ) : RecyclerView.Adapter<AccountAdapter.AccountViewHolder>() {
+
+    /** Whether the user has authenticated — controls code visibility. */
+    var isAuthenticated: Boolean = false
 
     /**
      * ViewHolder for a single TOTP account row.
@@ -39,25 +43,33 @@ class AccountAdapter(
         // Display the account name
         holder.accountName.text = account.account
 
-        // Generate and display the current TOTP code
-        val code = totpGenerator.generateCode(account.secret)
-        // Format as "123 456" for readability
-        holder.totpCode.text = "${code.substring(0, 3)} ${code.substring(3)}"
+        if (isAuthenticated) {
+            // Generate and display the current TOTP code
+            val code = totpGenerator.generateCode(account.secret)
+            // Format as "123 456" for readability
+            holder.totpCode.text = "${code.substring(0, 3)} ${code.substring(3)}"
 
-        // Update the countdown bar
-        val remaining = totpGenerator.getRemainingSeconds()
-        holder.countdownBar.progress = remaining
-        holder.textRemaining.text = "${remaining}s remaining"
+            // Update the countdown bar
+            val remaining = totpGenerator.getRemainingSeconds()
+            holder.countdownBar.progress = remaining
+            holder.textRemaining.text = "${remaining}s remaining"
 
-        // Change color when code is about to expire (less than 5 seconds)
-        if (remaining <= 5) {
-            holder.totpCode.setTextColor(0xFFDC2626.toInt()) // red
-            holder.countdownBar.progressTintList =
-                android.content.res.ColorStateList.valueOf(0xFFDC2626.toInt())
+            // Change color when code is about to expire (less than 5 seconds)
+            if (remaining <= 5) {
+                holder.totpCode.setTextColor(0xFFDC2626.toInt()) // red
+                holder.countdownBar.progressTintList =
+                    android.content.res.ColorStateList.valueOf(0xFFDC2626.toInt())
+            } else {
+                holder.totpCode.setTextColor(0xFF1E40AF.toInt()) // blue
+                holder.countdownBar.progressTintList =
+                    android.content.res.ColorStateList.valueOf(0xFF2563EB.toInt())
+            }
         } else {
-            holder.totpCode.setTextColor(0xFF1E40AF.toInt()) // blue
-            holder.countdownBar.progressTintList =
-                android.content.res.ColorStateList.valueOf(0xFF2563EB.toInt())
+            // Mask the code — user hasn't authenticated yet
+            holder.totpCode.text = "••• •••"
+            holder.totpCode.setTextColor(0xFF94A3B8.toInt()) // gray
+            holder.countdownBar.progress = 0
+            holder.textRemaining.text = "Locked"
         }
 
         // Delete button

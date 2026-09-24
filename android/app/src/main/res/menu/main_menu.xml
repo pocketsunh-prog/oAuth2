@@ -8,6 +8,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_lock"
+        android:title="Lock"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_clear_all"
         android:title="Clear All"
         app:showAsAction="never" />

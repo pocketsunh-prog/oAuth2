@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -16,6 +17,7 @@ import com.oauth.otp.databinding.ActivityMainBinding
  *
  * Displays a list of TOTP accounts with their current codes.
  * Codes refresh automatically every second.
+ * Fingerprint authentication is required to view codes.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -24,6 +26,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var totpGenerator: TotpGenerator
     private lateinit var adapter: AccountAdapter
     private val handler = Handler(Looper.getMainLooper())
+
+    /** Whether the user has authenticated with fingerprint in this session. */
+    private var isAuthenticated = false;
 
     /** Runnable that refreshes the TOTP codes every second. */
     private val refreshRunnable = object : Runnable {
@@ -55,14 +60,70 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         // Reload accounts when returning from add account screen
         loadAccounts()
-        // Start the refresh timer
-        handler.post(refreshRunnable)
+
+        // Require fingerprint authentication to view codes
+        if (!isAuthenticated) {
+            showFingerprintPrompt()
+        } else {
+            // Already authenticated — start the refresh timer
+            handler.post(refreshRunnable)
+        }
     }
 
     override fun onPause() {
         super.onPause()
         // Stop the refresh timer to save battery
         handler.removeCallbacks(refreshRunnable)
+    }
+
+    /**
+     * Show the fingerprint authentication prompt.
+     */
+    private fun showFingerprintPrompt() {
+        if (!FingerprintHelper.isAnyBiometricAvailable(this)) {
+            // No biometric available — show warning but allow access
+            AlertDialog.Builder(this)
+                .setTitle("No Biometric Authentication")
+                .setMessage(
+                    "No fingerprint or device credential is enrolled. " +
+                    "Please secure your device in Settings > Security."
+                )
+                .setPositiveButton("Continue") { _, _ ->
+                    isAuthenticated = true
+                    handler.post(refreshRunnable)
+                }
+                .setCancelable(false)
+                .show()
+            return
+        }
+
+        // Show the fingerprint prompt
+        FingerprintHelper.authenticate(
+            activity = this,
+            title = "OAuth2 Authenticator",
+            subtitle = "Verify your identity to view TOTP codes",
+            onSuccess = {
+                isAuthenticated = true
+                adapter.isAuthenticated = true
+                adapter.notifyDataSetChanged()
+                handler.post(refreshRunnable)
+                binding.textEmpty.text = "No accounts yet.\nTap + to add a TOTP account."
+            },
+            onError = { error ->
+                // Error (e.g., too many attempts, user cancelled)
+                binding.textEmpty.text = "Authentication required.\nTap to retry."
+                binding.textEmpty.setOnClickListener {
+                    showFingerprintPrompt()
+                }
+            },
+            onFailed = {
+                // Failed (wrong fingerprint) — can retry
+                binding.textEmpty.text = "Authentication failed.\nTap to retry."
+                binding.textEmpty.setOnClickListener {
+                    showFingerprintPrompt()
+                }
+            }
+        )
     }
 
     /**
@@ -95,17 +156,20 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Refresh the displayed TOTP codes.
+     * Only works if the user is authenticated.
      */
     private fun refreshCodes() {
-        adapter.notifyDataSetChanged()
+        if (isAuthenticated) {
+            adapter.notifyDataSetChanged()
+        }
     }
 
     /**
      * Show or hide the empty state message.
      */
     private fun updateEmptyState(isEmpty: Boolean) {
-        binding.textEmpty.visibility = if (isEmpty) android.view.View.VISIBLE else android.view.View.GONE
-        binding.recyclerAccounts.visibility = if (isEmpty) android.view.View.GONE else android.view.View.VISIBLE
+        binding.textEmpty.visibility = if (isEmpty) View.VISIBLE else View.GONE
+        binding.recyclerAccounts.visibility = if (isEmpty) View.GONE else View.VISIBLE
     }
 
     /**
@@ -144,8 +208,23 @@ class MainActivity : AppCompatActivity() {
                 confirmClearAll()
                 true
             }
+            R.id.menu_lock -> {
+                lockApp()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    /**
+     * Lock the app — requires fingerprint again on next resume.
+     */
+    private fun lockApp() {
+        isAuthenticated = false
+        adapter.isAuthenticated = false
+        adapter.notifyDataSetChanged()
+        handler.removeCallbacks(refreshRunnable)
+        showFingerprintPrompt()
     }
 
     /**
